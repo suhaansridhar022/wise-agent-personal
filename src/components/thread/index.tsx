@@ -192,7 +192,11 @@ export function Thread() {
     const toolMessages = ensureToolCallsHaveResponses(stream.messages);
 
     const context =
-      Object.keys(artifactContext).length > 0 ? artifactContext : undefined;
+      Object.keys(artifactContext).length > 0
+        ? { ...artifactContext, selectedModel: selectedModel ?? undefined }
+        : selectedModel
+          ? { selectedModel }
+          : undefined;
 
     stream.submit(
       { messages: [...toolMessages, newHumanMessage], context },

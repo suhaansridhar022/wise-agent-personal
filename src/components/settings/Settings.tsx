@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { X, Upload, User, Palette, Settings as SettingsIcon, DatabaseZap } from "lucide-react";
+import { X, Upload, User, Palette, Settings as SettingsIcon, DatabaseZap, Loader2 } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { useSettings } from "@/context/SettingsContext";
+import { toast } from "sonner";
 
 interface SettingsProps {
   isOpen: boolean;
@@ -38,6 +39,72 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
   } = useSettings();
   const [activeSection, setActiveSection] = useState("general");
   const [newModel, setNewModel] = useState("");
+  const [fetchingModels, setFetchingModels] = useState(false);
+
+  const fetchModels = async () => {
+    const base = (modelProviderBaseUrl || "").trim();
+    const key = (modelProviderApiKey || "").trim();
+    if (!base) {
+      toast.error("Missing Base URL", { description: "Please set Model Provider Base URL" });
+      return;
+    }
+    setFetchingModels(true);
+    try {
+      const baseUrl = base.replace(/\/$/, "");
+      const paths = ["/models", "/v1/models"]; // try common endpoints
+      let data: any | undefined;
+      let lastErrorText: string | undefined;
+      for (const path of paths) {
+        const url = baseUrl + path;
+        const res = await fetch(url, {
+          headers: {
+            ...(key ? { Authorization: `Bearer ${key}` } : {}),
+            "Content-Type": "application/json",
+          },
+          method: "GET",
+        });
+        if (res.ok) {
+          data = await res.json().catch(async () => {
+            lastErrorText = `Non-JSON response from ${path}`;
+            return undefined;
+          });
+          if (data !== undefined) break;
+        } else {
+          const text = await res.text().catch(() => "");
+          lastErrorText = `${res.status} ${res.statusText}${text ? `: ${text}` : ""}`;
+        }
+      }
+      if (data === undefined) {
+        throw new Error(lastErrorText || "No successful response from provider");
+      }
+      // Try OpenAI-style { data: [{id}...] }
+      let found: string[] | undefined;
+      if (Array.isArray(data?.data)) {
+        found = data.data
+          .map((m: any) => (typeof m?.id === "string" ? m.id : undefined))
+          .filter(Boolean);
+      }
+      // Try simple { models: ["..."] }
+      if (!found && Array.isArray(data?.models)) {
+        found = data.models.filter((m: any) => typeof m === "string");
+      }
+      // Try direct array ["..."]
+      if (!found && Array.isArray(data)) {
+        found = data.filter((m: any) => typeof m === "string");
+      }
+      if (!found || found.length === 0) {
+        toast.error("No models found", { description: "Provider returned no models" });
+        return;
+      }
+      const unique = Array.from(new Set(found));
+      setModels(unique);
+      toast.success("Models loaded", { description: `${unique.length} models available` });
+    } catch (e: any) {
+      toast.error("Failed to fetch models", { description: e?.message || "Unknown error (check Base URL, endpoint, CORS)" });
+    } finally {
+      setFetchingModels(false);
+    }
+  };
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   if (!isOpen) return null;
@@ -293,6 +360,21 @@ export function Settings({ isOpen, onClose }: SettingsProps) {
                           }}
                         >
                           Add
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={fetchModels}
+                          disabled={fetchingModels}
+                        >
+                          {fetchingModels ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Loading
+                            </>
+                          ) : (
+                            "Fetch from Provider"
+                          )}
                         </Button>
                       </div>
                       {models?.length ? (

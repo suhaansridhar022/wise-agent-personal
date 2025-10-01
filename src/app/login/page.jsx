@@ -13,7 +13,7 @@ export default function LoginPage() {
 
   const handleLogin = () => {
     setEmail(inputEmail); // store email globally
-    //router.push("/chat"); // navigate to chat page
+    router.push("/"); // navigate to main page (Thread component)
   };
 
   return (

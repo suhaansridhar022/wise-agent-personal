@@ -45,6 +45,7 @@ import {
   ArtifactTitle,
   useArtifactContext,
 } from "./artifact";
+import { useSettings } from "@/context/SettingsContext";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -114,6 +115,7 @@ function OpenGitHubRepo() {
 export function Thread() {
   const [artifactContext, setArtifactContext] = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
+  const { chatName, chatLogoDataUrl } = useSettings();
 
   const [threadId, _setThreadId] = useQueryState("threadId");
   const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
@@ -137,6 +139,7 @@ export function Thread() {
   } = useFileUpload();
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
   const isLargeScreen = useMediaQuery("(min-width: 1024px)");
+  const { selectedModel, models, setSelectedModel } = useSettings();
 
   const stream = useStreamContext();
   const messages = stream.messages;
@@ -250,7 +253,7 @@ export function Thread() {
     });
   };
 
-  const chatStarted = !!threadId || !!messages.length;
+  const chatStarted = true; // Always show chat interface
   const hasNoAIOrToolMessages = !messages.find(
     (m) => m.type === "ai" || m.type === "tool",
   );
@@ -289,10 +292,7 @@ export function Thread() {
         )}
       >
         <motion.div
-          className={cn(
-            "relative flex min-w-0 flex-1 flex-col overflow-hidden",
-            !chatStarted && "grid-rows-[1fr]",
-          )}
+          className="relative flex min-w-0 flex-1 flex-col overflow-hidden"
           layout={isLargeScreen}
           animate={{
             marginLeft: chatHistoryOpen ? (isLargeScreen ? 300 : 0) : 0,
@@ -308,28 +308,6 @@ export function Thread() {
               : { duration: 0 }
           }
         >
-          {!chatStarted && (
-            <div className="absolute top-0 left-0 z-10 flex w-full items-center justify-between gap-3 p-2 pl-4">
-              <div>
-                {(!chatHistoryOpen || !isLargeScreen) && (
-                  <Button
-                    className="hover:bg-gray-100"
-                    variant="ghost"
-                    onClick={() => setChatHistoryOpen((p) => !p)}
-                  >
-                    {chatHistoryOpen ? (
-                      <PanelRightOpen className="size-5" />
-                    ) : (
-                      <PanelRightClose className="size-5" />
-                    )}
-                  </Button>
-                )}
-              </div>
-              <div className="absolute top-2 right-4 flex items-center">
-                <OpenGitHubRepo />
-              </div>
-            </div>
-          )}
           {chatStarted && (
             <div className="relative z-10 flex items-center justify-between gap-3 p-2">
               <div className="relative flex items-center justify-start gap-2">
@@ -360,12 +338,23 @@ export function Thread() {
                     damping: 30,
                   }}
                 >
-                  <LangGraphLogoSVG
-                    width={32}
-                    height={32}
-                  />
+                  {chatLogoDataUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={chatLogoDataUrl}
+                      alt="Chat logo"
+                      width={32}
+                      height={32}
+                      className="rounded"
+                    />
+                  ) : (
+                    <LangGraphLogoSVG
+                      width={32}
+                      height={32}
+                    />
+                  )}
                   <span className="text-xl font-semibold tracking-tight">
-                    Agent Chat
+                    {chatName}
                   </span>
                 </motion.button>
               </div>
@@ -391,11 +380,7 @@ export function Thread() {
 
           <StickToBottom className="relative flex-1 overflow-hidden">
             <StickyToBottomContent
-              className={cn(
-                "absolute inset-0 overflow-y-scroll px-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent",
-                !chatStarted && "mt-[25vh] flex flex-col items-stretch",
-                chatStarted && "grid grid-rows-[1fr_auto]",
-              )}
+              className="absolute inset-0 overflow-y-scroll px-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent grid grid-rows-[1fr_auto]"
               contentClassName="pt-8 pb-16  max-w-3xl mx-auto flex flex-col gap-4 w-full"
               content={
                 <>
@@ -434,14 +419,6 @@ export function Thread() {
               }
               footer={
                 <div className="sticky bottom-0 flex flex-col items-center gap-8 bg-white">
-                  {!chatStarted && (
-                    <div className="flex items-center gap-3">
-                      <LangGraphLogoSVG className="h-8 flex-shrink-0" />
-                      <h1 className="text-2xl font-semibold tracking-tight">
-                        Agent Chat
-                      </h1>
-                    </div>
-                  )}
 
                   <ScrollToBottom className="animate-in fade-in-0 zoom-in-95 absolute bottom-full left-1/2 mb-4 -translate-x-1/2" />
 
@@ -499,6 +476,21 @@ export function Thread() {
                             </Label>
                           </div>
                         </div>
+                        {models?.length ? (
+                          <div className="flex items-center gap-2">
+                            <Label className="text-sm text-gray-600">Model</Label>
+                            <select
+                              className="border rounded px-2 py-1 text-sm"
+                              value={selectedModel ?? ""}
+                              onChange={(e) => setSelectedModel(e.target.value || null)}
+                            >
+                              <option value="">Default</option>
+                              {models.map((m) => (
+                                <option key={m} value={m}>{m}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : null}
                         <Label
                           htmlFor="file-input"
                           className="flex cursor-pointer items-center gap-2"

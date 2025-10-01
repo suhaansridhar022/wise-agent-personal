@@ -12,8 +12,61 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PanelRightOpen, PanelRightClose } from "lucide-react";
+import { PanelRightOpen, PanelRightClose, Settings as SettingsIcon, LogOut } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useUser } from "@/context/UserContext";
+import { Separator } from "@/components/ui/separator";
+import { Settings } from "@/components/settings/Settings";
+import { useState } from "react";
+
+function UserSection() {
+  const { email, signOut } = useUser();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  if (!email) return null;
+
+  return (
+    <>
+      <div className="w-full border-t border-gray-200 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white text-sm font-medium">
+              {email.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-gray-900 truncate max-w-[180px]">
+                {email}
+              </span>
+              <span className="text-xs text-gray-500">Online</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 hover:bg-gray-100"
+              onClick={() => setIsSettingsOpen(true)}
+            >
+              <SettingsIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 hover:bg-gray-100"
+              onClick={signOut}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      <Settings 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
+    </>
+  );
+}
 
 function ThreadList({
   threads,
@@ -96,28 +149,33 @@ export default function ThreadHistory() {
 
   return (
     <>
-      <div className="shadow-inner-right hidden h-screen w-[300px] shrink-0 flex-col items-start justify-start gap-6 border-r-[1px] border-slate-300 lg:flex">
-        <div className="flex w-full items-center justify-between px-4 pt-1.5">
-          <Button
-            className="hover:bg-gray-100"
-            variant="ghost"
-            onClick={() => setChatHistoryOpen((p) => !p)}
-          >
-            {chatHistoryOpen ? (
-              <PanelRightOpen className="size-5" />
+      <div className="shadow-inner-right hidden h-screen w-[300px] shrink-0 flex-col items-start justify-between border-r-[1px] border-slate-300 lg:flex">
+        <div className="flex w-full flex-col items-start justify-start gap-6">
+          <div className="flex w-full items-center justify-between px-4 pt-1.5">
+            <Button
+              className="hover:bg-gray-100"
+              variant="ghost"
+              onClick={() => setChatHistoryOpen((p) => !p)}
+            >
+              {chatHistoryOpen ? (
+                <PanelRightOpen className="size-5" />
+              ) : (
+                <PanelRightClose className="size-5" />
+              )}
+            </Button>
+            <h1 className="text-xl font-semibold tracking-tight">
+              Thread History
+            </h1>
+          </div>
+          <div className="flex-1 w-full">
+            {threadsLoading ? (
+              <ThreadHistoryLoading />
             ) : (
-              <PanelRightClose className="size-5" />
+              <ThreadList threads={threads} />
             )}
-          </Button>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Thread History
-          </h1>
+          </div>
         </div>
-        {threadsLoading ? (
-          <ThreadHistoryLoading />
-        ) : (
-          <ThreadList threads={threads} />
-        )}
+        <UserSection />
       </div>
       <div className="lg:hidden">
         <Sheet
@@ -129,15 +187,20 @@ export default function ThreadHistory() {
         >
           <SheetContent
             side="left"
-            className="flex lg:hidden"
+            className="flex lg:hidden flex-col justify-between"
           >
-            <SheetHeader>
-              <SheetTitle>Thread History</SheetTitle>
-            </SheetHeader>
-            <ThreadList
-              threads={threads}
-              onThreadClick={() => setChatHistoryOpen((o) => !o)}
-            />
+            <div className="flex flex-col flex-1">
+              <SheetHeader>
+                <SheetTitle>Thread History</SheetTitle>
+              </SheetHeader>
+              <div className="flex-1 mt-4">
+                <ThreadList
+                  threads={threads}
+                  onThreadClick={() => setChatHistoryOpen((o) => !o)}
+                />
+              </div>
+            </div>
+            <UserSection />
           </SheetContent>
         </Sheet>
       </div>

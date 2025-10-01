@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import React from "react";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { UserProvider } from "@/context/UserContext";
+import { SettingsProvider } from "@/context/SettingsContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,7 +26,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <UserProvider>
-        <NuqsAdapter>{children}</NuqsAdapter>
+          <SettingsProvider>
+            <NuqsAdapter>{children}</NuqsAdapter>
+          </SettingsProvider>
         </UserProvider>
       </body>
     </html>

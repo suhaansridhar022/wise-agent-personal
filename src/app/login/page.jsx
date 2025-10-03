@@ -1,20 +1,36 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
-  const { setEmail } = useUser();
+  const { email, setEmail } = useUser();
   const [inputEmail, setInputEmail] = useState("");
   const [inputPassword, setInputPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
+  // Redirect to main page if user is already logged in
+  useEffect(() => {
+    if (email) {
+      router.push("/");
+    }
+  }, [email, router]);
+
   const handleLogin = () => {
     setEmail(inputEmail); // store email globally
     router.push("/"); // navigate to main page (Thread component)
   };
+
+  // Show loading if already logged in (prevent flicker)
+  if (email) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div>Redirecting...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
@@ -47,7 +63,7 @@ export default function LoginPage() {
 
         <button
           onClick={handleLogin}
-          className="w-full px-4 py-2 bg-blue-500 text-white rounded h-10 flex items-center justify-center hover:bg-blue-600 transition-colors font-medium"
+          className="w-full px-4 py-2 bg-green-800 text-white rounded h-10 flex items-center justify-center hover:bg-green-600 transition-colors font-medium"
         >
           Login
         </button>

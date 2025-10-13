@@ -25,6 +25,9 @@ import { getApiKey } from "@/lib/api-key";
 import { useThreads } from "./Thread";
 import { toast } from "sonner";
 import { useSettings } from "@/context/SettingsContext";
+import { isWiseAIModel, isWiseAIUrl } from "@/lib/wise-ai-api";
+import { useWiseAIStream } from "@/hooks/use-wise-ai-stream";
+import { useWiseAIThreads } from "@/hooks/use-wise-ai-threads";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -150,7 +153,16 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
     langGraphUrl: settingsApiUrl,
     langGraphAssistantId: settingsAssistantId,
     langGraphApiKey: settingsApiKey,
+    apiType,
+    selectedModel,
+    modelProviderBaseUrl,
+    modelProviderApiKey,
   } = useSettings();
+  
+  // Always call the hooks at the top level (Rules of Hooks)
+  const [threadId, setThreadId] = useQueryState("threadId");
+  const wiseAIStream = useWiseAIStream(selectedModel, modelProviderBaseUrl, modelProviderApiKey, threadId);
+  
   // Get environment variables
   const envApiUrl: string | undefined = process.env.NEXT_PUBLIC_API_URL;
   const envAssistantId: string | undefined =
@@ -181,6 +193,52 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   const effectiveApiUrl = (settingsApiUrl?.trim() || finalApiUrl)?.trim();
   const effectiveAssistantId = (settingsAssistantId?.trim() || finalAssistantId)?.trim();
   const effectiveApiKey = (settingsApiKey?.trim() || apiKey || undefined) ?? undefined;
+
+  // Check if we should use Wise AI instead of LangGraph
+  const shouldUseWiseAI = selectedModel && (
+    apiType === 'model' || 
+    isWiseAIModel(selectedModel) || 
+    isWiseAIUrl(modelProviderBaseUrl)
+  );
+
+  // Debug logging
+  console.log('StreamProvider Debug:', {
+    selectedModel,
+    apiType,
+    modelProviderBaseUrl,
+    modelProviderApiKey: modelProviderApiKey ? '***' : 'missing',
+    shouldUseWiseAI
+  });
+
+  // If using Wise AI, use the Wise AI stream hook
+  if (shouldUseWiseAI && selectedModel && modelProviderBaseUrl && modelProviderApiKey) {
+    return (
+      <StreamContext.Provider value={wiseAIStream}>
+        {children}
+      </StreamContext.Provider>
+    );
+  }
+
+  // If Wise AI is selected but configuration is missing, show error
+  if (shouldUseWiseAI && (!selectedModel || !modelProviderBaseUrl || !modelProviderApiKey)) {
+    const errorStream = {
+      messages: [],
+      isLoading: false,
+      error: new Error('Wise AI configuration incomplete. Please check your settings.'),
+      submit: () => {},
+      stop: () => {},
+      getMessagesMetadata: () => ({ firstSeenState: { values: { messages: [] }, parent_checkpoint: null } }),
+      values: { messages: [], ui: [] },
+      interrupt: null,
+      ui: []
+    } as StreamContextType;
+
+    return (
+      <StreamContext.Provider value={errorStream}>
+        {children}
+      </StreamContext.Provider>
+    );
+  }
 
   // Skip the setup form and go directly to the chat interface
   // Default values are now provided above

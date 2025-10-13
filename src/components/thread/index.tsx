@@ -45,6 +45,7 @@ import {
   useArtifactContext,
 } from "./artifact";
 import { useSettings } from "@/context/SettingsContext";
+import { callWiseAIAPI, isWiseAIModel, isWiseAIUrl } from "@/lib/wise-ai-api";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -116,7 +117,7 @@ export function Thread() {
   } = useFileUpload();
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
   const isLargeScreen = useMediaQuery("(min-width: 1024px)");
-  const { selectedModel, models, setSelectedModel } = useSettings();
+  const { selectedModel, models, setSelectedModel, apiType, setApiType, modelProviderBaseUrl, modelProviderApiKey } = useSettings();
 
   const stream = useStreamContext();
   const messages = stream.messages;
@@ -130,6 +131,11 @@ export function Thread() {
     // close artifact and reset artifact context
     closeArtifact();
     setArtifactContext({});
+
+    // If using Wise AI and creating a new thread, call the stream's createNewThread method
+    if (shouldUseWiseAI && id === null && 'createNewThread' in stream) {
+      stream.createNewThread();
+    }
   };
 
   useEffect(() => {
@@ -174,7 +180,7 @@ export function Thread() {
     prevMessageLength.current = messages.length;
   }, [messages]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if ((input.trim().length === 0 && contentBlocks.length === 0) || isLoading)
       return;
@@ -190,31 +196,51 @@ export function Thread() {
     };
 
     const toolMessages = ensureToolCallsHaveResponses(stream.messages);
+    const allMessages = [...toolMessages, newHumanMessage];
 
-    const context =
-      Object.keys(artifactContext).length > 0
-        ? { ...artifactContext, selectedModel: selectedModel ?? undefined }
-        : selectedModel
-          ? { selectedModel }
-          : undefined;
-
-    stream.submit(
-      { messages: [...toolMessages, newHumanMessage], context },
-      {
-        streamMode: ["values"],
-        streamSubgraphs: true,
-        streamResumable: true,
-        optimisticValues: (prev) => ({
-          ...prev,
-          context,
-          messages: [
-            ...(prev.messages ?? []),
-            ...toolMessages,
-            newHumanMessage,
-          ],
-        }),
-      },
+    // Determine which API to use
+    const shouldUseWiseAI = selectedModel && (
+      apiType === 'model' || 
+      isWiseAIModel(selectedModel) || 
+      isWiseAIUrl(modelProviderBaseUrl)
     );
+
+    if (shouldUseWiseAI) {
+      // Use Wise AI Gateway API through the custom hook
+      stream.submit(
+        { messages: allMessages },
+        {
+          streamMode: ["values"],
+          streamSubgraphs: true,
+          streamResumable: true,
+        }
+      );
+    } else {
+      // Use LangGraph API (existing behavior)
+      const context =
+        Object.keys(artifactContext).length > 0
+          ? { ...artifactContext, selectedModel: selectedModel ?? undefined }
+          : selectedModel
+            ? { selectedModel }
+            : undefined;
+
+      stream.submit(
+        { messages: allMessages, context },
+        {
+          streamMode: ["values"],
+          streamSubgraphs: true,
+          streamResumable: true,
+          optimisticValues: (prev) => ({
+            ...prev,
+            context,
+            messages: [
+              ...(prev.messages ?? []),
+              ...allMessages,
+            ],
+          }),
+        },
+      );
+    }
 
     setInput("");
     setContentBlocks([]);
@@ -454,21 +480,44 @@ export function Thread() {
                             </Label>
                           </div>
                         </div>
-                        {models?.length ? (
+                        {(models?.length || apiType !== null) && (
                           <div className="flex items-center gap-2">
-                            <Label className="text-sm text-gray-600">Model</Label>
+                            <Label className="text-sm text-gray-600">AI Provider</Label>
                             <select
                               className="border rounded px-2 py-1 text-sm"
-                              value={selectedModel ?? ""}
-                              onChange={(e) => setSelectedModel(e.target.value || null)}
+                              value={apiType ? `${apiType}:${selectedModel || ""}` : ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value.startsWith('model:')) {
+                                  const model = value.replace('model:', '');
+                                  setApiType('model');
+                                  setSelectedModel(model || null);
+                                } else if (value.startsWith('graph:')) {
+                                  const graph = value.replace('graph:', '');
+                                  setApiType('graph');
+                                  setSelectedModel(graph || null);
+                                } else if (value === '') {
+                                  setApiType(null);
+                                  setSelectedModel(null);
+                                }
+                              }}
                             >
-                              <option value="">Default</option>
-                              {models.map((m) => (
-                                <option key={m} value={m}>{m}</option>
-                              ))}
+                              <option value="">Default (LangGraph)</option>
+                              {models?.length > 0 && (
+                                <optgroup label="🤖 Models (Wise AI)">
+                                  {models.map((m) => (
+                                    <option key={m} value={`model:${m}`}>{m}</option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              <optgroup label="📊 Graphs (LangGraph)">
+                                <option value="graph:agent">Agent</option>
+                                <option value="graph:research-assistant">Research Assistant</option>
+                                <option value="graph:code-helper">Code Helper</option>
+                              </optgroup>
                             </select>
                           </div>
-                        ) : null}
+                        )}
                         <Label
                           htmlFor="file-input"
                           className="flex cursor-pointer items-center gap-2"

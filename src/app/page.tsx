@@ -3,12 +3,47 @@
 import { Thread } from "@/components/thread";
 import { StreamProvider } from "@/providers/Stream";
 import { ThreadProvider } from "@/providers/Thread";
+import { WiseAIThreadProvider } from "@/providers/WiseAIThreadProvider";
 import { ArtifactProvider } from "@/components/thread/artifact";
 import { Toaster } from "@/components/ui/sonner";
 import { useUser } from "@/context/UserContext";
+import { useSettings } from "@/context/SettingsContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import React from "react";
+
+function ChatInterface() {
+  const { apiType, selectedModel, modelProviderBaseUrl } = useSettings();
+  
+  // Check if we should use Wise AI
+  const shouldUseWiseAI = selectedModel && (
+    apiType === 'model' || 
+    selectedModel.toLowerCase().includes('wise_ai') || 
+    (modelProviderBaseUrl && modelProviderBaseUrl.includes('wisseninfotech.com'))
+  );
+
+  if (shouldUseWiseAI) {
+    return (
+      <WiseAIThreadProvider>
+        <StreamProvider>
+          <ArtifactProvider>
+            <Thread />
+          </ArtifactProvider>
+        </StreamProvider>
+      </WiseAIThreadProvider>
+    );
+  }
+
+  return (
+    <ThreadProvider>
+      <StreamProvider>
+        <ArtifactProvider>
+          <Thread />
+        </ArtifactProvider>
+      </StreamProvider>
+    </ThreadProvider>
+  );
+}
 
 export default function DemoPage(): React.ReactNode {
   const { email } = useUser();
@@ -34,13 +69,7 @@ export default function DemoPage(): React.ReactNode {
   return (
     <React.Suspense fallback={<div>Loading (layout)...</div>}>
       <Toaster />
-      <ThreadProvider>
-        <StreamProvider>
-          <ArtifactProvider>
-            <Thread />
-          </ArtifactProvider>
-        </StreamProvider>
-      </ThreadProvider>
+      <ChatInterface />
     </React.Suspense>
   );
 }

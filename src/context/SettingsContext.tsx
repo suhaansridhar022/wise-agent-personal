@@ -23,6 +23,9 @@ type SettingsContextType = {
   setModels: (models: string[]) => void;
   selectedModel: string | null;
   setSelectedModel: (model: string | null) => void;
+  // API Type selection
+  apiType: 'model' | 'graph' | null;
+  setApiType: (type: 'model' | 'graph' | null) => void;
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -35,6 +38,7 @@ const MP_BASE_URL_STORAGE_KEY = "settings:mp:baseUrl";
 const MP_API_KEY_STORAGE_KEY = "settings:mp:apiKey";
 const MODELS_STORAGE_KEY = "settings:mp:models";
 const SELECTED_MODEL_STORAGE_KEY = "settings:mp:selectedModel";
+const API_TYPE_STORAGE_KEY = "settings:api:type";
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [chatName, setChatNameState] = useState<string>("Agent Chat");
@@ -46,6 +50,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [modelProviderApiKey, setModelProviderApiKeyState] = useState<string>("");
   const [models, setModelsState] = useState<string[]>([]);
   const [selectedModel, setSelectedModelState] = useState<string | null>(null);
+  const [apiType, setApiTypeState] = useState<'model' | 'graph' | null>(null);
 
   // Initialize from localStorage
   useEffect(() => {
@@ -61,6 +66,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const mpApiKey = window.localStorage.getItem(MP_API_KEY_STORAGE_KEY) ?? "";
       const modelsStr = window.localStorage.getItem(MODELS_STORAGE_KEY);
       const savedSelectedModel = window.localStorage.getItem(SELECTED_MODEL_STORAGE_KEY);
+      const savedApiType = window.localStorage.getItem(API_TYPE_STORAGE_KEY) as 'model' | 'graph' | null;
       setLangGraphUrlState(lgUrl);
       setLangGraphAssistantIdState(lgAssistantId);
       setLangGraphApiKeyState(lgApiKey);
@@ -75,6 +81,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         }
       }
       setSelectedModelState(savedSelectedModel || null);
+      setApiTypeState(savedApiType || null);
     } catch {
       // ignore
     }
@@ -133,6 +140,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           else window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, m);
         } catch {}
       },
+      apiType,
+      setApiType: (type: 'model' | 'graph' | null) => {
+        setApiTypeState(type);
+        try {
+          if (type === null) window.localStorage.removeItem(API_TYPE_STORAGE_KEY);
+          else window.localStorage.setItem(API_TYPE_STORAGE_KEY, type);
+        } catch {}
+      },
     }),
     [
       chatName,
@@ -144,6 +159,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       modelProviderApiKey,
       models,
       selectedModel,
+      apiType,
     ],
   );
 

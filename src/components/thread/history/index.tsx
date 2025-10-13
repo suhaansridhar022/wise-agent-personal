@@ -18,6 +18,10 @@ import { useUser } from "@/context/UserContext";
 import { Separator } from "@/components/ui/separator";
 import { Settings } from "@/components/settings/Settings";
 import { useState } from "react";
+import { useSettings } from "@/context/SettingsContext";
+import WiseAIThreadList from "./WiseAIThreadList";
+import { LocalThread } from "@/lib/local-thread-storage";
+import { loadThreads } from "@/lib/local-thread-storage";
 
 function UserSection() {
   const { email, signOut } = useUser();
@@ -135,17 +139,44 @@ export default function ThreadHistory() {
     parseAsBoolean.withDefault(false),
   );
 
-  const { getThreads, threads, setThreads, threadsLoading, setThreadsLoading } =
-    useThreads();
+  // Check if we're using Wise AI
+  const { apiType, selectedModel, modelProviderBaseUrl } = useSettings();
+  const shouldUseWiseAI = selectedModel && (
+    apiType === 'model' || 
+    selectedModel.toLowerCase().includes('wise_ai') || 
+    (modelProviderBaseUrl && modelProviderBaseUrl.includes('wisseninfotech.com'))
+  );
+
+  // Try to get threads context, but don't fail if it doesn't exist
+  let threadContext;
+  try {
+    threadContext = useThreads();
+  } catch (error) {
+    // Context not available, that's okay for Wise AI mode
+    threadContext = null;
+  }
+
+  // State for Wise AI threads
+  const [wiseAIThreads, setWiseAIThreads] = useState<LocalThread[]>([]);
+  const [langGraphThreads, setLangGraphThreads] = useState<Thread[]>([]);
+  const [threadsLoading, setThreadsLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setThreadsLoading(true);
-    getThreads()
-      .then(setThreads)
-      .catch(console.error)
-      .finally(() => setThreadsLoading(false));
-  }, []);
+    
+    if (shouldUseWiseAI) {
+      // Load Wise AI threads from localStorage
+      const threads = loadThreads();
+      setWiseAIThreads(threads);
+    } else if (threadContext) {
+      // Load LangGraph threads
+      setThreadsLoading(true);
+      threadContext.getThreads()
+        .then(setLangGraphThreads)
+        .catch(console.error)
+        .finally(() => setThreadsLoading(false));
+    }
+  }, [shouldUseWiseAI, threadContext]);
 
   return (
     <>
@@ -168,10 +199,12 @@ export default function ThreadHistory() {
             </h1>
           </div>
           <div className="flex-1 w-full">
-            {threadsLoading ? (
+            {shouldUseWiseAI ? (
+              <WiseAIThreadList threads={wiseAIThreads} />
+            ) : threadsLoading ? (
               <ThreadHistoryLoading />
             ) : (
-              <ThreadList threads={threads} />
+              <ThreadList threads={langGraphThreads} />
             )}
           </div>
         </div>
@@ -194,10 +227,17 @@ export default function ThreadHistory() {
                 <SheetTitle>Thread History</SheetTitle>
               </SheetHeader>
               <div className="flex-1 mt-4">
-                <ThreadList
-                  threads={threads}
-                  onThreadClick={() => setChatHistoryOpen((o) => !o)}
-                />
+                {shouldUseWiseAI ? (
+                  <WiseAIThreadList 
+                    threads={wiseAIThreads}
+                    onThreadClick={() => setChatHistoryOpen((o) => !o)}
+                  />
+                ) : (
+                  <ThreadList
+                    threads={langGraphThreads}
+                    onThreadClick={() => setChatHistoryOpen((o) => !o)}
+                  />
+                )}
               </div>
             </div>
             <UserSection />

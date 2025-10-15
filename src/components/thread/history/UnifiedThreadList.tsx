@@ -29,11 +29,11 @@ function UnifiedThreadList({
           
           return (
             <div key={t.id} className="w-full px-1">
-              <Button
+               <Button
                 variant="ghost"
                 className={`w-full items-start justify-start text-left font-normal hover:bg-gray-100 ${
                   isActive ? 'bg-gray-100' : ''
-                } ${!isCompatible ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${!isCompatible ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 onClick={(e) => {
                   e.preventDefault();
                   if (!isCompatible) {
@@ -74,11 +74,6 @@ function UnifiedThreadList({
                   <p className="truncate text-ellipsis text-xs text-gray-500">
                     {new Date(t.updatedAt).toLocaleDateString()} • {t.messageCount} messages
                   </p>
-                  {t.lastMessage && (
-                    <p className="truncate text-ellipsis text-xs text-gray-400 w-full">
-                      {t.lastMessage}
-                    </p>
-                  )}
                   {!isCompatible && (
                     <p className="text-xs text-red-500 italic">
                       Switch to {isWiseAI ? 'a Wise AI model' : 'a LangGraph assistant'} to use this thread

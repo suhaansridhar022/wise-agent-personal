@@ -59,7 +59,7 @@ export function useWiseAIStream(
       // Create new thread if none exists
       let threadId = currentThreadId;
       if (!threadId) {
-        const newThread = createNewThread();
+        const newThread = createNewThread('wise-ai'); // Mark as Wise AI thread
         const threads = loadThreads();
         threads.unshift(newThread); // Add to beginning
         saveThreads(threads);
@@ -127,7 +127,7 @@ export function useWiseAIStream(
 
   // Create new thread
   const createNewThreadHandler = useCallback(() => {
-    const newThread = createNewThread();
+    const newThread = createNewThread('wise-ai'); // Mark as Wise AI thread
     const threads = loadThreads();
     threads.unshift(newThread);
     saveThreads(threads);

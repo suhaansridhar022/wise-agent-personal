@@ -11,6 +11,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import React from "react";
+import "@/lib/migrate-threads"; // Auto-run thread migration
 
 function ChatInterface() {
   const { apiType, selectedModel, modelProviderBaseUrl } = useSettings();

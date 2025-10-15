@@ -46,6 +46,7 @@ import {
 } from "./artifact";
 import { useSettings } from "@/context/SettingsContext";
 import { callWiseAIAPI, isWiseAIModel, isWiseAIUrl } from "@/lib/wise-ai-api";
+import { syncLangGraphThread, loadThreads } from "@/lib/local-thread-storage";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -133,6 +134,26 @@ export function Thread() {
   );
 
   const setThreadId = (id: string | null) => {
+    // Validate thread API type compatibility
+    if (id !== null) {
+      const threads = loadThreads();
+      const thread = threads.find(t => t.id === id);
+      
+      if (thread) {
+        const currentApiType = shouldUseWiseAI ? 'wise-ai' : 'langgraph';
+        if (thread.apiType !== currentApiType) {
+          toast.error(
+            `This thread is locked to ${thread.apiType === 'wise-ai' ? 'Wise AI' : 'LangGraph'}. Please switch to ${thread.apiType === 'wise-ai' ? 'a Wise AI model' : 'a LangGraph assistant'} to use this thread.`,
+            {
+              duration: 5000,
+              closeButton: true,
+            }
+          );
+          return; // Don't switch to incompatible thread
+        }
+      }
+    }
+    
     _setThreadId(id);
 
     // close artifact and reset artifact context
@@ -182,10 +203,15 @@ export function Thread() {
       messages[messages.length - 1].type === "ai"
     ) {
       setFirstTokenReceived(true);
+      
+      // Sync LangGraph threads to unified storage
+      if (!shouldUseWiseAI && threadId) {
+        syncLangGraphThread(threadId, messages);
+      }
     }
 
     prevMessageLength.current = messages.length;
-  }, [messages]);
+  }, [messages, shouldUseWiseAI, threadId]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

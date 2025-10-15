@@ -1,5 +1,7 @@
 import { Message } from '@langchain/langgraph-sdk';
 
+export type ThreadApiType = 'wise-ai' | 'langgraph';
+
 export interface LocalThread {
   id: string;
   title: string;
@@ -7,14 +9,16 @@ export interface LocalThread {
   updatedAt: string;
   messageCount: number;
   lastMessage?: string;
+  apiType: ThreadApiType; // Track which API this thread belongs to
 }
 
 export interface ThreadMessages {
   [threadId: string]: Message[];
 }
 
-const THREADS_STORAGE_KEY = 'wise-ai-threads';
-const THREAD_MESSAGES_STORAGE_KEY = 'wise-ai-thread-messages';
+// Unified storage for all threads (both Wise AI and LangGraph)
+const THREADS_STORAGE_KEY = 'unified-threads';
+const THREAD_MESSAGES_STORAGE_KEY = 'unified-thread-messages';
 
 export function saveThreads(threads: LocalThread[]): void {
   try {
@@ -52,14 +56,15 @@ export function loadThreadMessages(): ThreadMessages {
   }
 }
 
-export function createNewThread(): LocalThread {
+export function createNewThread(apiType: ThreadApiType): LocalThread {
   const threadId = `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   return {
     id: threadId,
     title: 'New Chat',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    messageCount: 0
+    messageCount: 0,
+    apiType // Store which API this thread uses
   };
 }
 
@@ -76,4 +81,34 @@ export function updateThreadTitle(threadId: string, messages: Message[]): string
     return title || 'New Chat';
   }
   return 'New Chat';
+}
+
+// Helper to sync LangGraph threads into unified storage
+export function syncLangGraphThread(
+  threadId: string,
+  messages: Message[]
+): void {
+  const threads = loadThreads();
+  const existingIndex = threads.findIndex(t => t.id === threadId);
+  
+  const threadData: LocalThread = {
+    id: threadId,
+    title: updateThreadTitle(threadId, messages),
+    createdAt: existingIndex >= 0 ? threads[existingIndex].createdAt : new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    messageCount: messages.length,
+    lastMessage: messages.length > 0 ? 
+      (typeof messages[messages.length - 1].content === 'string' 
+        ? messages[messages.length - 1].content.slice(0, 100)
+        : '') : '',
+    apiType: 'langgraph'
+  };
+  
+  if (existingIndex >= 0) {
+    threads[existingIndex] = threadData;
+  } else {
+    threads.unshift(threadData);
+  }
+  
+  saveThreads(threads);
 }

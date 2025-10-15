@@ -1,6 +1,11 @@
 # Agent Chat UI
 
-Agent Chat UI is a Next.js application which enables chatting with any LangGraph server with a `messages` key through a chat interface.
+Agent Chat UI is a Next.js application which enables chatting with any LangGraph server with a `messages` key through a chat interface. It also supports OpenAI-compatible APIs like Wise AI Gateway.
+
+## 📚 Documentation
+
+- **[API Flow Documentation](./API_FLOW_DOCUMENTATION.md)** - Detailed explanation of how the application calls APIs
+- **[Unified Thread System](./UNIFIED_THREAD_SYSTEM.md)** - How thread management works across Wise AI and LangGraph
 
 > [!NOTE]
 > 🎥 Watch the video setup guide [here](https://youtu.be/lInrwVnZ83o).

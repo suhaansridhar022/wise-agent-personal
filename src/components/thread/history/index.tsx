@@ -19,8 +19,8 @@ import { Separator } from "@/components/ui/separator";
 import { Settings } from "@/components/settings/Settings";
 import { useState } from "react";
 import { useSettings } from "@/context/SettingsContext";
-import WiseAIThreadList from "./WiseAIThreadList";
-import { LocalThread } from "@/lib/local-thread-storage";
+import UnifiedThreadList from "./UnifiedThreadList";
+import { LocalThread, ThreadApiType } from "@/lib/local-thread-storage";
 import { loadThreads } from "@/lib/local-thread-storage";
 
 function UserSection() {
@@ -156,40 +156,31 @@ export default function ThreadHistory() {
     threadContext = null;
   }
 
-  // State for Wise AI threads
-  const [wiseAIThreads, setWiseAIThreads] = useState<LocalThread[]>([]);
-  const [langGraphThreads, setLangGraphThreads] = useState<Thread[]>([]);
+  // State for unified threads
+  const [allThreads, setAllThreads] = useState<LocalThread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
+  
+  // Determine current API type
+  const currentApiType: ThreadApiType | null = shouldUseWiseAI ? 'wise-ai' : 'langgraph';
 
-  // Reload threads when chat history is opened or when shouldUseWiseAI changes
+  // Load all threads (both Wise AI and LangGraph from localStorage)
   useEffect(() => {
     if (typeof window === "undefined") return;
     
-    if (shouldUseWiseAI) {
-      // Load Wise AI threads from localStorage
-      const threads = loadThreads();
-      setWiseAIThreads(threads);
-    } else if (threadContext) {
-      // Load LangGraph threads
-      setThreadsLoading(true);
-      threadContext.getThreads()
-        .then(setLangGraphThreads)
-        .catch(console.error)
-        .finally(() => setThreadsLoading(false));
-    }
-  }, [shouldUseWiseAI, threadContext, chatHistoryOpen]);
+    // Always load from localStorage (unified storage)
+    const threads = loadThreads();
+    setAllThreads(threads);
+  }, [chatHistoryOpen]);
 
-  // Reload Wise AI threads periodically to catch updates
+  // Reload threads periodically to catch updates
   useEffect(() => {
-    if (!shouldUseWiseAI) return;
-    
     const interval = setInterval(() => {
       const threads = loadThreads();
-      setWiseAIThreads(threads);
+      setAllThreads(threads);
     }, 1000); // Reload every second
     
     return () => clearInterval(interval);
-  }, [shouldUseWiseAI]);
+  }, []);
 
   return (
     <>
@@ -212,12 +203,13 @@ export default function ThreadHistory() {
             </h1>
           </div>
           <div className="flex-1 w-full">
-            {shouldUseWiseAI ? (
-              <WiseAIThreadList threads={wiseAIThreads} />
-            ) : threadsLoading ? (
+            {threadsLoading ? (
               <ThreadHistoryLoading />
             ) : (
-              <ThreadList threads={langGraphThreads} />
+              <UnifiedThreadList 
+                threads={allThreads} 
+                currentApiType={currentApiType}
+              />
             )}
           </div>
         </div>
@@ -240,17 +232,11 @@ export default function ThreadHistory() {
                 <SheetTitle>Thread History</SheetTitle>
               </SheetHeader>
               <div className="flex-1 mt-4">
-                {shouldUseWiseAI ? (
-                  <WiseAIThreadList 
-                    threads={wiseAIThreads}
-                    onThreadClick={() => setChatHistoryOpen((o) => !o)}
-                  />
-                ) : (
-                  <ThreadList
-                    threads={langGraphThreads}
-                    onThreadClick={() => setChatHistoryOpen((o) => !o)}
-                  />
-                )}
+                <UnifiedThreadList 
+                  threads={allThreads}
+                  currentApiType={currentApiType}
+                  onThreadClick={() => setChatHistoryOpen((o) => !o)}
+                />
               </div>
             </div>
             <UserSection />

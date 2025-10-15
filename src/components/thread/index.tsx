@@ -482,7 +482,7 @@ export function Thread() {
                         </div>
                         {(models?.length || apiType !== null) && (
                           <div className="flex items-center gap-2">
-                            <Label className="text-sm text-gray-600">AI Provider</Label>
+                            {/*<Label className="text-sm text-gray-600">AI Provider</Label>*/}
                             <select
                               className="border rounded px-2 py-1 text-sm"
                               value={apiType ? `${apiType}:${selectedModel || ""}` : ""}
@@ -504,16 +504,16 @@ export function Thread() {
                             >
                               <option value="">Default (LangGraph)</option>
                               {models?.length > 0 && (
-                                <optgroup label="🤖 Models (Wise AI)">
+                                <optgroup label="Models (Wise AI)">
                                   {models.map((m) => (
                                     <option key={m} value={`model:${m}`}>{m}</option>
                                   ))}
                                 </optgroup>
                               )}
-                              <optgroup label="📊 Graphs (LangGraph)">
+                              <optgroup label="Graphs (LangGraph)">
                                 <option value="graph:agent">Agent</option>
-                                <option value="graph:research-assistant">Research Assistant</option>
-                                <option value="graph:code-helper">Code Helper</option>
+                                {/*<option value="graph:research-assistant">Research Assistant</option>
+                                <option value="graph:code-helper">Code Helper</option>*/}
                               </optgroup>
                             </select>
                           </div>

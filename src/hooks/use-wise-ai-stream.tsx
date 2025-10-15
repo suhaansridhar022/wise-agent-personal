@@ -25,14 +25,15 @@ export function useWiseAIStream(
 
   // Track the previous thread ID to detect actual thread switches
   const prevThreadIdRef = useRef<string | null>(currentThreadId);
+  const isSubmittingRef = useRef(false);
 
   // Load messages for current thread on mount or thread change
   useEffect(() => {
+    // Don't reload if we're in the middle of submitting (prevents clearing during API call)
+    if (isSubmittingRef.current) return;
+    
     // Only reload if thread actually changed (not just state update)
     if (prevThreadIdRef.current === currentThreadId) return;
-    
-    // Don't reload messages if we're currently loading (prevents clearing during API call)
-    if (isLoading) return;
     
     if (currentThreadId) {
       const threadMessages = loadThreadMessages();
@@ -45,7 +46,7 @@ export function useWiseAIStream(
     }
     
     prevThreadIdRef.current = currentThreadId;
-  }, [currentThreadId, isLoading]);
+  }, [currentThreadId]);
 
   // Sync with threadId prop changes
   useEffect(() => {
@@ -65,17 +66,19 @@ export function useWiseAIStream(
 
     setIsLoading(true);
     setError(null);
+    isSubmittingRef.current = true; // Mark that we're submitting
 
     try {
       // Create new thread if none exists
-      let threadId = currentThreadId;
-      if (!threadId) {
+      let threadIdToUse = currentThreadId;
+      if (!threadIdToUse) {
         const newThread = createNewThread('wise-ai'); // Mark as Wise AI thread
         const threads = loadThreads();
         threads.unshift(newThread); // Add to beginning
         saveThreads(threads);
-        threadId = newThread.id;
-        setCurrentThreadId(threadId);
+        threadIdToUse = newThread.id;
+        setCurrentThreadId(threadIdToUse);
+        prevThreadIdRef.current = threadIdToUse; // Update ref immediately
       }
 
       // Add user messages to the chat
@@ -98,16 +101,16 @@ export function useWiseAIStream(
 
       // Save messages to localStorage
       const threadMessages = loadThreadMessages();
-      threadMessages[threadId] = finalMessages;
+      threadMessages[threadIdToUse] = finalMessages;
       saveThreadMessages(threadMessages);
 
       // Update thread title and metadata
       const threads = loadThreads();
-      const threadIndex = threads.findIndex(t => t.id === threadId);
+      const threadIndex = threads.findIndex(t => t.id === threadIdToUse);
       if (threadIndex !== -1) {
         threads[threadIndex] = {
           ...threads[threadIndex],
-          title: updateThreadTitle(threadId, finalMessages),
+          title: updateThreadTitle(threadIdToUse, finalMessages),
           updatedAt: new Date().toISOString(),
           messageCount: finalMessages.length,
           lastMessage: aiMessage.content.slice(0, 100)
@@ -119,6 +122,7 @@ export function useWiseAIStream(
       console.error('Wise AI API Error:', err);
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false; // Mark that we're done submitting
     }
   }, [selectedModel, baseUrl, apiKey, currentThreadId, messages]);
 

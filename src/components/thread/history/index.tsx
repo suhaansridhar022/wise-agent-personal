@@ -184,9 +184,9 @@ export default function ThreadHistory() {
 
   return (
     <>
-      <div className="shadow-inner-right hidden h-screen w-[300px] shrink-0 flex-col items-start justify-between border-r-[1px] border-slate-300 lg:flex">
-        <div className="flex w-full h-full flex-col items-start justify-start gap-4">
-          <div className="flex w-full items-center justify-between px-4 pt-1.5">
+      <div className="shadow-inner-right hidden h-screen w-[300px] shrink-0 flex-col border-r-[1px] border-slate-300 lg:flex">
+        <div className="flex w-full flex-1 flex-col overflow-hidden">
+          <div className="flex w-full items-center justify-between px-4 pt-1.5 pb-4 shrink-0">
             <Button
               className="hover:bg-gray-100"
               variant="ghost"
@@ -213,7 +213,9 @@ export default function ThreadHistory() {
             )}
           </div>
         </div>
-        <UserSection />
+        <div className="shrink-0">
+          <UserSection />
+        </div>
       </div>
       <div className="lg:hidden">
         <Sheet

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Message } from '@langchain/langgraph-sdk';
 import { callWiseAIAPI } from '@/lib/wise-ai-api';
 import { 
@@ -23,8 +23,17 @@ export function useWiseAIStream(
   const [error, setError] = useState<any>(null);
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(threadId || null);
 
+  // Track the previous thread ID to detect actual thread switches
+  const prevThreadIdRef = useRef<string | null>(currentThreadId);
+
   // Load messages for current thread on mount or thread change
   useEffect(() => {
+    // Only reload if thread actually changed (not just state update)
+    if (prevThreadIdRef.current === currentThreadId) return;
+    
+    // Don't reload messages if we're currently loading (prevents clearing during API call)
+    if (isLoading) return;
+    
     if (currentThreadId) {
       const threadMessages = loadThreadMessages();
       const messages = threadMessages[currentThreadId] || [];
@@ -34,7 +43,9 @@ export function useWiseAIStream(
       setMessages([]);
       console.log('No thread selected, cleared messages');
     }
-  }, [currentThreadId]);
+    
+    prevThreadIdRef.current = currentThreadId;
+  }, [currentThreadId, isLoading]);
 
   // Sync with threadId prop changes
   useEffect(() => {

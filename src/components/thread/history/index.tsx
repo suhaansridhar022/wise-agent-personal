@@ -161,6 +161,7 @@ export default function ThreadHistory() {
   const [langGraphThreads, setLangGraphThreads] = useState<Thread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
 
+  // Reload threads when chat history is opened or when shouldUseWiseAI changes
   useEffect(() => {
     if (typeof window === "undefined") return;
     
@@ -176,7 +177,19 @@ export default function ThreadHistory() {
         .catch(console.error)
         .finally(() => setThreadsLoading(false));
     }
-  }, [shouldUseWiseAI, threadContext]);
+  }, [shouldUseWiseAI, threadContext, chatHistoryOpen]);
+
+  // Reload Wise AI threads periodically to catch updates
+  useEffect(() => {
+    if (!shouldUseWiseAI) return;
+    
+    const interval = setInterval(() => {
+      const threads = loadThreads();
+      setWiseAIThreads(threads);
+    }, 1000); // Reload every second
+    
+    return () => clearInterval(interval);
+  }, [shouldUseWiseAI]);
 
   return (
     <>

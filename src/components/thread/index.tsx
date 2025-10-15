@@ -125,6 +125,13 @@ export function Thread() {
 
   const lastError = useRef<string | undefined>(undefined);
 
+  // Determine if we're using Wise AI
+  const shouldUseWiseAI = selectedModel && (
+    apiType === 'model' || 
+    isWiseAIModel(selectedModel) || 
+    isWiseAIUrl(modelProviderBaseUrl)
+  );
+
   const setThreadId = (id: string | null) => {
     _setThreadId(id);
 
@@ -134,7 +141,7 @@ export function Thread() {
 
     // If using Wise AI and creating a new thread, call the stream's createNewThread method
     if (shouldUseWiseAI && id === null && 'createNewThread' in stream) {
-      stream.createNewThread();
+      (stream as any).createNewThread();
     }
   };
 
@@ -198,13 +205,7 @@ export function Thread() {
     const toolMessages = ensureToolCallsHaveResponses(stream.messages);
     const allMessages = [...toolMessages, newHumanMessage];
 
-    // Determine which API to use
-    const shouldUseWiseAI = selectedModel && (
-      apiType === 'model' || 
-      isWiseAIModel(selectedModel) || 
-      isWiseAIUrl(modelProviderBaseUrl)
-    );
-
+    // Use the shouldUseWiseAI variable defined at component level
     if (shouldUseWiseAI) {
       // Use Wise AI Gateway API through the custom hook
       stream.submit(

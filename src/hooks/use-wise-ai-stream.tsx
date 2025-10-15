@@ -27,11 +27,21 @@ export function useWiseAIStream(
   useEffect(() => {
     if (currentThreadId) {
       const threadMessages = loadThreadMessages();
-      setMessages(threadMessages[currentThreadId] || []);
+      const messages = threadMessages[currentThreadId] || [];
+      setMessages(messages);
+      console.log('Loaded thread:', currentThreadId, 'with', messages.length, 'messages');
     } else {
       setMessages([]);
+      console.log('No thread selected, cleared messages');
     }
   }, [currentThreadId]);
+
+  // Sync with threadId prop changes
+  useEffect(() => {
+    if (threadId !== currentThreadId) {
+      setCurrentThreadId(threadId);
+    }
+  }, [threadId, currentThreadId]);
 
   const submit = useCallback(async (
     input: { messages: Message[] },
